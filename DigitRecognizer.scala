@@ -6,6 +6,7 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.classification.NaiveBayes
 import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.tree.DecisionTree
 
 /**
  * @author sl169
@@ -58,14 +59,14 @@ object DigitRecognizer {
 //    result.repartition(1).saveAsTextFile("file:///home/shdxspark/suisui/digitRec.txt")
     
     //随机森林模型
-    val numClasses = 10
-    val categoricalFeaturesInfo = Map[Int, Int]()
-    val numTrees = 70 
-    val featureSubsetStrategy = "auto" 
-    val impurity = "gini"
-    val maxDepth = 30
-    val maxBins = 32
-    val randomForestModel = RandomForest.trainClassifier(data, numClasses, categoricalFeaturesInfo, numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+//    val numClasses = 10
+//    val categoricalFeaturesInfo = Map[Int, Int]()
+//    val numTrees = 70 
+//    val featureSubsetStrategy = "auto" 
+//    val impurity = "gini"
+//    val maxDepth = 30
+//    val maxBins = 32
+//    val randomForestModel = RandomForest.trainClassifier(data, numClasses, categoricalFeaturesInfo, numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
     
 //    val nbTotalCorrect = data.map { point =>
 //      if (randomForestModel.predict(point.features) == point.label) 1 else 0
@@ -100,7 +101,34 @@ object DigitRecognizer {
     //numTree=25,maxDepth=26,准确率：0.9998333333333334
     //numTree=29,maxDepth=30,准确率：0.9999523809523809
     
-    val predictions = randomForestModel.predict(features).map { p => p.toInt }
-    predictions.repartition(1).saveAsTextFile("file:///home/shdxspark/suisui/digitRec.txt")
+//    val predictions = randomForestModel.predict(features).map { p => p.toInt }
+//    predictions.repartition(1).saveAsTextFile("file:///home/shdxspark/suisui/digitRec.txt")
+    
+    //决策树
+    val numClasses = 10
+    val categoricalFeaturesInfo = Map[Int, Int](4 -> 10)
+    val impurity = "gini"
+    val maxDepth = 30
+    val maxBins = 128
+    
+    val splits = data.randomSplit(Array(0.7, 0.3))
+    val (trainingData, testData) = (splits(0), splits(1))
+
+    
+    val decisionTreeModel = DecisionTree.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,impurity, maxDepth, maxBins)
+    val nbTotalCorrect = testData.map { point =>
+      if (decisionTreeModel.predict(point.features) == point.label) 1 else 0
+    }.sum
+    val numData = testData.count()
+    println(numData)
+    val nbAccuracy = nbTotalCorrect / numData
+    println("准确率："+nbAccuracy)
+    //确率：0.9986428571428572,在训练数据上计算的，没使用交叉验证
+    //准确率：0.845889590157386,交叉验证0.7,0.3，maxDepth = 30,maxBins = 32
+    //准确率：0.8478972149070305,交叉验证0.7,0.3，maxDepth = 30,maxBins = 64
+    //准确率：0.8492602958816473,交叉验证0.7,0.3，maxDepth = 30,maxBins = 128
+    //准确率：0.8513740886146943
+    
+
   }
 }
